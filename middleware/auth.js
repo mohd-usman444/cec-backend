@@ -21,6 +21,17 @@ const protect = async (req, res, next) => {
         return res.status(401).json({ message: 'Not authorized, user not found' });
       }
 
+      // RBAC Enhancement: Map employees to their contractor's data via companyName
+      if (req.user.role === 'employee') {
+        const contractor = await User.findOne({ 
+          companyName: req.user.companyName, 
+          role: { $in: ['contractor', 'admin'] } 
+        });
+        req.user.contractorId = contractor ? contractor._id : req.user._id;
+      } else {
+        req.user.contractorId = req.user._id;
+      }
+
       next();
     } catch (error) {
       console.error(error);

@@ -8,7 +8,7 @@ const slugify = require('slugify');
 // @access  Private
 const getSites = async (req, res) => {
   try {
-    const sites = await Site.find({ contractor: req.user._id }).sort({ createdAt: -1 });
+    const sites = await Site.find({ contractor: req.user.contractorId }).sort({ createdAt: -1 });
     
     // Enrich sites with stats
     const enrichedSites = await Promise.all(sites.map(async (site) => {
@@ -50,9 +50,9 @@ const getSite = async (req, res) => {
 
     // Check if valid ObjectId, else search by slug
     if (idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
-      site = await Site.findOne({ _id: idOrSlug, contractor: req.user._id });
+      site = await Site.findOne({ _id: idOrSlug, contractor: req.user.contractorId });
     } else {
-      site = await Site.findOne({ slug: idOrSlug, contractor: req.user._id });
+      site = await Site.findOne({ slug: idOrSlug, contractor: req.user.contractorId });
     }
 
     if (site) {
@@ -82,7 +82,7 @@ const createSite = async (req, res) => {
     }
 
     const site = await Site.create({
-      contractor: req.user._id,
+      contractor: req.user.contractorId,
       siteName,
       siteLocation,
       startDate,
@@ -106,9 +106,9 @@ const updateSite = async (req, res) => {
     let site;
 
     if (idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
-      site = await Site.findOne({ _id: idOrSlug, contractor: req.user._id });
+      site = await Site.findOne({ _id: idOrSlug, contractor: req.user.contractorId });
     } else {
-      site = await Site.findOne({ slug: idOrSlug, contractor: req.user._id });
+      site = await Site.findOne({ slug: idOrSlug, contractor: req.user.contractorId });
     }
 
     if (site) {
@@ -137,7 +137,7 @@ const updateSite = async (req, res) => {
 // @access  Private
 const getStats = async (req, res) => {
   try {
-    const sites = await Site.find({ contractor: req.user._id }).select('_id');
+    const sites = await Site.find({ contractor: req.user.contractorId }).select('_id');
     const siteIds = sites.map(site => site._id);
 
     const workerStats = await WorkerEntry.aggregate([
@@ -169,9 +169,9 @@ const deleteSite = async (req, res) => {
     let site;
 
     if (idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
-      site = await Site.findOne({ _id: idOrSlug, contractor: req.user._id });
+      site = await Site.findOne({ _id: idOrSlug, contractor: req.user.contractorId });
     } else {
-      site = await Site.findOne({ slug: idOrSlug, contractor: req.user._id });
+      site = await Site.findOne({ slug: idOrSlug, contractor: req.user.contractorId });
     }
 
     if (site) {

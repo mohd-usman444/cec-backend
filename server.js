@@ -17,6 +17,10 @@ app.use(cookieParser());
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date() });
 });
+app.get('/', (req, res) => {
+  res.send('CEC Backend Running Successfully');
+});
+
 
 const authRoutes = require('./routes/authRoutes');
 const siteRoutes = require('./routes/siteRoutes');

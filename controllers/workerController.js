@@ -6,7 +6,7 @@ const Site = require('../models/Site');
 // @access  Private
 const getWorkerEntries = async (req, res) => {
   try {
-    const site = await Site.findOne({ _id: req.params.siteId, contractor: req.user._id });
+    const site = await Site.findOne({ _id: req.params.siteId, contractor: req.user.contractorId });
     if (!site) return res.status(404).json({ message: 'Site not found or unauthorized' });
 
     const workers = await WorkerEntry.find({ site: req.params.siteId }).sort({ dateOfPayment: -1 });
@@ -23,7 +23,7 @@ const addWorkerEntry = async (req, res) => {
   try {
     const { siteId, workerName, role, phoneNumber, dailyWage, daysWorked, dateOfPayment, paymentMode, notes } = req.body;
 
-    const site = await Site.findOne({ _id: siteId, contractor: req.user._id });
+    const site = await Site.findOne({ _id: siteId, contractor: req.user.contractorId });
     if (!site) return res.status(404).json({ message: 'Site not found or unauthorized' });
 
     if (site.status === 'completed') {
@@ -62,7 +62,7 @@ const updateWorkerEntry = async (req, res) => {
       return res.status(404).json({ message: 'Worker entry not found' });
     }
 
-    if (workerEntry.site.contractor.toString() !== req.user._id.toString()) {
+    if (workerEntry.site.contractor.toString() !== req.user.contractorId.toString()) {
       return res.status(401).json({ message: 'Not authorized to update this entry' });
     }
 
@@ -98,7 +98,7 @@ const deleteWorkerEntry = async (req, res) => {
       return res.status(404).json({ message: 'Worker entry not found' });
     }
 
-    if (workerEntry.site.contractor.toString() !== req.user._id.toString()) {
+    if (workerEntry.site.contractor.toString() !== req.user.contractorId.toString()) {
       return res.status(401).json({ message: 'Not authorized' });
     }
 

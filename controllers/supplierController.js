@@ -6,7 +6,7 @@ const Site = require('../models/Site');
 // @access  Private
 const getSupplierEntries = async (req, res) => {
   try {
-    const site = await Site.findOne({ _id: req.params.siteId, contractor: req.user._id });
+    const site = await Site.findOne({ _id: req.params.siteId, contractor: req.user.contractorId });
     if (!site) return res.status(404).json({ message: 'Site not found or unauthorized' });
 
     const suppliers = await SupplierEntry.find({ site: req.params.siteId }).sort({ dateOfPurchase: -1 });
@@ -23,7 +23,7 @@ const addSupplierEntry = async (req, res) => {
   try {
     const { siteId, supplierName, supplierContact, materialName, quantity, unit, ratePerUnit, dateOfPurchase, paymentStatus, amountPaid, notes } = req.body;
 
-    const site = await Site.findOne({ _id: siteId, contractor: req.user._id });
+    const site = await Site.findOne({ _id: siteId, contractor: req.user.contractorId });
     if (!site) return res.status(404).json({ message: 'Site not found' });
 
     if (site.status === 'completed') {
@@ -72,7 +72,7 @@ const updateSupplierEntry = async (req, res) => {
     const entry = await SupplierEntry.findById(req.params.id).populate('site');
 
     if (!entry) return res.status(404).json({ message: 'Supplier entry not found' });
-    if (entry.site.contractor.toString() !== req.user._id.toString()) return res.status(401).json({ message: 'Not authorized' });
+    if (entry.site.contractor.toString() !== req.user.contractorId.toString()) return res.status(401).json({ message: 'Not authorized' });
 
     if (entry.site.status === 'completed') {
       return res.status(400).json({ message: 'Cannot update entries of a completed site. Please reactivate the site first.' });
@@ -116,7 +116,7 @@ const deleteSupplierEntry = async (req, res) => {
     const entry = await SupplierEntry.findById(req.params.id).populate('site');
 
     if (!entry) return res.status(404).json({ message: 'Supplier entry not found' });
-    if (entry.site.contractor.toString() !== req.user._id.toString()) return res.status(401).json({ message: 'Not authorized' });
+    if (entry.site.contractor.toString() !== req.user.contractorId.toString()) return res.status(401).json({ message: 'Not authorized' });
 
     if (entry.site.status === 'completed') {
       return res.status(400).json({ message: 'Cannot delete entries from a completed site. Please reactivate the site first.' });

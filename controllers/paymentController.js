@@ -5,7 +5,7 @@ const Payment = require('../models/Payment');
 // @access  Private
 const getPayments = async (req, res) => {
   try {
-    const payments = await Payment.find({ contractor: req.user._id }).sort({ date: -1 });
+    const payments = await Payment.find({ contractor: req.user.contractorId }).sort({ date: -1 });
     res.json(payments);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -20,7 +20,7 @@ const addPayment = async (req, res) => {
     const { name, date, amount, action, type, reason } = req.body;
 
     const payment = await Payment.create({
-      contractor: req.user._id,
+      contractor: req.user.contractorId,
       name,
       date,
       amount,
@@ -46,7 +46,7 @@ const updatePayment = async (req, res) => {
       return res.status(404).json({ message: 'Payment not found' });
     }
 
-    if (payment.contractor.toString() !== req.user._id.toString()) {
+    if (payment.contractor.toString() !== req.user.contractorId.toString()) {
       return res.status(401).json({ message: 'Not authorized' });
     }
 
@@ -75,7 +75,7 @@ const deletePayment = async (req, res) => {
       return res.status(404).json({ message: 'Payment not found' });
     }
 
-    if (payment.contractor.toString() !== req.user._id.toString()) {
+    if (payment.contractor.toString() !== req.user.contractorId.toString()) {
       return res.status(401).json({ message: 'Not authorized' });
     }
 
