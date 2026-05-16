@@ -175,6 +175,10 @@ const deleteSite = async (req, res) => {
     }
 
     if (site) {
+      // Also delete related worker and supplier entries
+      await WorkerEntry.deleteMany({ site: site._id });
+      await SupplierEntry.deleteMany({ site: site._id });
+      
       await site.deleteOne();
       res.json({ message: 'Site removed' });
     } else {
