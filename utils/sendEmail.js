@@ -15,9 +15,7 @@ const sendEmail = async (options) => {
   // If using Gmail, passing 'service' is sometimes more reliable than host/port, but we keep host/port for flexibility
   // We add logger and debug flags for detailed SMTP transaction logs
   const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: process.env.EMAIL_PORT || 587,
-    secure: false, // true for 465, false for other ports
+    service: 'gmail', // Use the built-in gmail service
     auth: {
       user: emailUser,
       pass: emailPass,
