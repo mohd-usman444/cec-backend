@@ -142,9 +142,16 @@ const forgotPassword = async (req, res) => {
     await user.save();
 
     // Create reset url
-    const resetUrl = `${req.protocol}://${req.get('host').includes('localhost') ? 'localhost:5173' : req.get('host')}/reset-password/${resetToken}`;
+    const clientUrl = process.env.NODE_ENV === 'production' && process.env.CLIENT_URL 
+      ? process.env.CLIENT_URL 
+      : 'http://localhost:5173';
+      
+    // Ensure no trailing slash in clientUrl
+    const normalizedClientUrl = clientUrl.endsWith('/') ? clientUrl.slice(0, -1) : clientUrl;
+    const resetUrl = `${normalizedClientUrl}/reset-password/${resetToken}`;
 
     console.log('RESET PASSWORD URL:', resetUrl);
+    console.log(`Using CLIENT_URL config: NODE_ENV=${process.env.NODE_ENV}, CLIENT_URL=${process.env.CLIENT_URL}`);
 
     const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
 
@@ -162,13 +169,13 @@ const forgotPassword = async (req, res) => {
 
       res.status(200).json({ success: true, data: 'Email sent' });
     } catch (err) {
-      console.log(err);
+      console.error('Email sending failed in authController:', err.message);
       user.resetPasswordToken = undefined;
       user.resetPasswordExpire = undefined;
 
       await user.save();
 
-      return res.status(500).json({ message: 'Email could not be sent' });
+      return res.status(500).json({ message: 'Email could not be sent. Please check if email service is configured correctly or try again later.' });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });

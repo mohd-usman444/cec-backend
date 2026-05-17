@@ -1,6 +1,13 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
+  // Safe logging for debugging production email issues
+  console.log('--- Email Configuration Check ---');
+  console.log(`EMAIL_USER configured: ${!!process.env.EMAIL_USER}`);
+  console.log(`EMAIL_PASS configured: ${!!process.env.EMAIL_PASS}`);
+  console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log('---------------------------------');
+
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port: process.env.EMAIL_PORT || 587,
@@ -24,7 +31,7 @@ const sendEmail = async (options) => {
     console.log('Message sent: %s', info.messageId);
     return info;
   } catch (error) {
-    console.error('Nodemailer Error:', error);
+    console.error('Nodemailer Error Details:', error);
     throw error;
   }
 };
