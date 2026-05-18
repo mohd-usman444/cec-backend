@@ -12,10 +12,12 @@ const sendEmail = async (options) => {
   console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
   console.log('---------------------------------');
 
-  // If using Gmail, passing 'service' is sometimes more reliable than host/port, but we keep host/port for flexibility
-  // We add logger and debug flags for detailed SMTP transaction logs
+  // Explicit SMTP configuration is often more reliable in serverless environments (Vercel)
+  // than relying on the 'service' abstraction.
   const transporter = nodemailer.createTransport({
-    service: 'gmail', // Use the built-in gmail service
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // use SSL
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -26,11 +28,15 @@ const sendEmail = async (options) => {
 
   // Verify connection configuration before sending
   try {
-    console.log('Verifying SMTP connection...');
+    console.log('[SMTP] Verifying SMTP connection to smtp.gmail.com:465...');
     await transporter.verify();
-    console.log('Server is ready to take our messages (transporter.verify() succeeded)');
+    console.log('[SMTP] Server is ready to take our messages (transporter.verify() succeeded)');
   } catch (verifyError) {
-    console.error('Nodemailer Verification Error Details:', verifyError);
+    console.error('[SMTP] Nodemailer Verification Error Details:');
+    console.error(`- Error Name: ${verifyError.name}`);
+    console.error(`- Error Message: ${verifyError.message}`);
+    console.error(`- Error Code: ${verifyError.code}`);
+    console.error(`- Error Command: ${verifyError.command}`);
     // Note: We don't throw here, we'll let sendMail attempt and fail so we get both logs if needed
   }
 
