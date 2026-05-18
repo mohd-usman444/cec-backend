@@ -235,6 +235,7 @@ const forgotPassword = async (req, res) => {
     // Set expire
     user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
 
+    console.log(`[Forgot Password] Saving reset token for ${email}. Is password modified? ${user.isModified('password')}`);
     await user.save();
 
     // Create reset url
@@ -269,7 +270,9 @@ const forgotPassword = async (req, res) => {
       user.resetPasswordToken = undefined;
       user.resetPasswordExpire = undefined;
 
+      console.log(`[Forgot Password] Email failed. Rolling back token. Is password modified? ${user.isModified('password')}`);
       await user.save();
+      console.log(`[Forgot Password] Rollback complete. Password should remain unchanged.`);
 
       return res.status(500).json({ message: 'Email could not be sent. Please check if email service is configured correctly or try again later.' });
     }
