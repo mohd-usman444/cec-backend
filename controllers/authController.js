@@ -10,20 +10,55 @@ const registerUser = async (req, res) => {
   const { fullName, companyName, email, password, phoneNumber, role } = req.body;
 
   try {
-    const userExists = await User.findOne({ email });
-
-    if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+    // 1. Validation for required fields
+    if (!fullName || !companyName || !email || !password || !phoneNumber) {
+      return res.status(400).json({ message: 'Please fill in all fields' });
     }
 
-    // Only allow 'employee' role to be set from public registration.
-    // All other roles default to 'contractor' (the owner/admin role).
     const assignedRole = role === 'employee' ? 'employee' : 'contractor';
+    let assignedCompanyName = companyName.trim();
+
+    if (assignedRole === 'employee') {
+      // 2. Check if the company exists (contractor/admin with that companyName)
+      const companyExists = await User.findOne({ 
+        companyName: { $regex: new RegExp(`^${companyName.trim()}$`, 'i') }, 
+        role: { $in: ['contractor', 'admin'] } 
+      });
+      if (!companyExists) {
+        return res.status(404).json({ message: 'Company not found.' });
+      }
+      assignedCompanyName = companyExists.companyName; // Normalize company name capitalization
+
+      // 3. Check duplicate employee using email + companyName
+      const employeeExists = await User.findOne({ 
+        email: email.toLowerCase(), 
+        companyName: assignedCompanyName, 
+        role: 'employee' 
+      });
+      if (employeeExists) {
+        return res.status(400).json({ message: 'Employee already registered.' });
+      }
+
+      // Also check if email is registered as a contractor/admin (global uniqueness)
+      const contractorExists = await User.findOne({ 
+        email: email.toLowerCase(), 
+        role: { $in: ['contractor', 'admin'] } 
+      });
+      if (contractorExists) {
+        return res.status(400).json({ message: 'Employee already registered.' });
+      }
+    } else {
+      // Contractor registration: check global email uniqueness
+      const userExists = await User.findOne({ email: email.toLowerCase() });
+      if (userExists) {
+        return res.status(400).json({ message: 'User already exists' });
+      }
+    }
 
     const user = await User.create({
       fullName,
-      companyName,
-      email,
+      companyName: assignedCompanyName,
+      email: email.toLowerCase(),
       password,
       phoneNumber,
       role: assignedRole,
@@ -51,12 +86,75 @@ const registerUser = async (req, res) => {
 // @route   POST /api/auth/login
 // @access  Public
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, companyName } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    // If companyName is provided, it is employee login
+    if (companyName !== undefined && companyName !== '') {
+      if (!email || !password || !companyName) {
+        return res.status(400).json({ message: 'Please fill in all fields' });
+      }
 
-    if (user && (await user.matchPassword(password))) {
+      // Verify if the company exists
+      const companyExists = await User.findOne({ 
+        companyName: { $regex: new RegExp(`^${companyName.trim()}$`, 'i') }, 
+        role: { $in: ['contractor', 'admin'] } 
+      });
+      if (!companyExists) {
+        return res.status(404).json({ message: 'Company not found.' });
+      }
+
+      // Find the employee in this company
+      const employee = await User.findOne({ 
+        email: email.toLowerCase(), 
+        companyName: companyExists.companyName, 
+        role: 'employee' 
+      });
+
+      if (!employee) {
+        // Check if the email exists globally for any user
+        const emailExists = await User.findOne({ email: email.toLowerCase() });
+        if (!emailExists) {
+          return res.status(401).json({ message: 'Email is incorrect.' });
+        }
+        return res.status(401).json({ message: 'Email is incorrect for this company.' });
+      }
+
+      // Verify password
+      const isMatch = await employee.matchPassword(password);
+      if (!isMatch) {
+        return res.status(401).json({ message: 'Incorrect password.' });
+      }
+
+      const token = generateToken(res, employee._id);
+      res.json({
+        _id: employee._id,
+        fullName: employee.fullName,
+        companyName: employee.companyName,
+        email: employee.email,
+        role: employee.role,
+        token: token,
+      });
+    } else {
+      // Contractor/Admin login
+      if (!email || !password) {
+        return res.status(400).json({ message: 'Please fill in all fields' });
+      }
+
+      const user = await User.findOne({ 
+        email: email.toLowerCase(), 
+        role: { $in: ['contractor', 'admin'] } 
+      });
+
+      if (!user) {
+        return res.status(401).json({ message: 'Email is incorrect.' });
+      }
+
+      const isMatch = await user.matchPassword(password);
+      if (!isMatch) {
+        return res.status(401).json({ message: 'Incorrect password.' });
+      }
+
       const token = generateToken(res, user._id);
       res.json({
         _id: user._id,
@@ -66,8 +164,6 @@ const loginUser = async (req, res) => {
         role: user.role,
         token: token,
       });
-    } else {
-      res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
