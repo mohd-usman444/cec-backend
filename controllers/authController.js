@@ -3,6 +3,15 @@ const generateToken = require('../utils/generateToken');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 
+// Helper to construct a safe RegExp for fuzzy/case-insensitive/whitespace-flexible company name matching
+const makeCompanyRegExp = (companyNameInput) => {
+  if (!companyNameInput) return /^$/;
+  const trimmed = companyNameInput.trim();
+  const words = trimmed.split(/\s+/);
+  const escapedWords = words.map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return new RegExp(`^\\s*${escapedWords.join('\\s+')}\\s*$`, 'i');
+};
+
 // @desc    Register a new contractor
 // @route   POST /api/auth/register
 // @access  Public
@@ -21,7 +30,7 @@ const registerUser = async (req, res) => {
     if (assignedRole === 'employee') {
       // 2. Check if the company exists (contractor/admin with that companyName)
       const companyExists = await User.findOne({ 
-        companyName: { $regex: new RegExp(`^${companyName.trim()}$`, 'i') }, 
+        companyName: { $regex: makeCompanyRegExp(companyName) }, 
         role: { $in: ['contractor', 'admin'] } 
       });
       if (!companyExists) {
@@ -97,7 +106,7 @@ const loginUser = async (req, res) => {
 
       // Verify if the company exists
       const companyExists = await User.findOne({ 
-        companyName: { $regex: new RegExp(`^${companyName.trim()}$`, 'i') }, 
+        companyName: { $regex: makeCompanyRegExp(companyName) }, 
         role: { $in: ['contractor', 'admin'] } 
       });
       if (!companyExists) {
