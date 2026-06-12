@@ -1,6 +1,7 @@
 const Site = require('../models/Site');
 const WorkerEntry = require('../models/WorkerEntry');
 const SupplierEntry = require('../models/SupplierEntry');
+const OtherExpense = require('../models/OtherExpense');
 const slugify = require('slugify');
 
 // @desc    Get all sites for a contractor
@@ -23,14 +24,25 @@ const getSites = async (req, res) => {
 
       const materialStats = await SupplierEntry.aggregate([
         { $match: { site: site._id } },
-        { $group: { _id: null, materialSpend: { $sum: '$totalAmount' } } }
+        { $group: { 
+          _id: null, 
+          materialSpend: { $sum: '$totalAmount' },
+          materialPaid: { $sum: '$amountPaid' }
+        } }
+      ]);
+
+      const otherExpenseStats = await OtherExpense.aggregate([
+        { $match: { site: site._id } },
+        { $group: { _id: null, otherExpenseSpend: { $sum: '$amount' } } }
       ]);
 
       return {
         ...site.toObject(),
         workerCount: workerStats.length > 0 ? workerStats[0].uniqueWorkers.length : 0,
         labourSpend: workerStats.length > 0 ? workerStats[0].labourSpend : 0,
-        materialSpend: materialStats.length > 0 ? materialStats[0].materialSpend : 0
+        materialSpend: materialStats.length > 0 ? materialStats[0].materialSpend : 0,
+        materialPaid: materialStats.length > 0 ? materialStats[0].materialPaid : 0,
+        otherExpenseSpend: otherExpenseStats.length > 0 ? otherExpenseStats[0].otherExpenseSpend : 0
       };
     }));
 
@@ -56,7 +68,37 @@ const getSite = async (req, res) => {
     }
 
     if (site) {
-      res.json(site);
+      const workerStats = await WorkerEntry.aggregate([
+        { $match: { site: site._id } },
+        { $group: { 
+          _id: null, 
+          labourSpend: { $sum: '$totalAmount' },
+          uniqueWorkers: { $addToSet: '$workerName' }
+        }}
+      ]);
+
+      const materialStats = await SupplierEntry.aggregate([
+        { $match: { site: site._id } },
+        { $group: { 
+          _id: null, 
+          materialSpend: { $sum: '$totalAmount' },
+          materialPaid: { $sum: '$amountPaid' }
+        } }
+      ]);
+
+      const otherExpenseStats = await OtherExpense.aggregate([
+        { $match: { site: site._id } },
+        { $group: { _id: null, otherExpenseSpend: { $sum: '$amount' } } }
+      ]);
+
+      res.json({
+        ...site.toObject(),
+        workerCount: workerStats.length > 0 ? workerStats[0].uniqueWorkers.length : 0,
+        labourSpend: workerStats.length > 0 ? workerStats[0].labourSpend : 0,
+        materialSpend: materialStats.length > 0 ? materialStats[0].materialSpend : 0,
+        materialPaid: materialStats.length > 0 ? materialStats[0].materialPaid : 0,
+        otherExpenseSpend: otherExpenseStats.length > 0 ? otherExpenseStats[0].otherExpenseSpend : 0
+      });
     } else {
       res.status(404).json({ message: 'Site not found' });
     }
@@ -147,12 +189,23 @@ const getStats = async (req, res) => {
 
     const supplierStats = await SupplierEntry.aggregate([
       { $match: { site: { $in: siteIds } } },
-      { $group: { _id: null, totalSpend: { $sum: '$totalAmount' } } }
+      { $group: { 
+        _id: null, 
+        totalSpend: { $sum: '$totalAmount' },
+        totalPaid: { $sum: '$amountPaid' }
+      } }
+    ]);
+
+    const otherExpenseStats = await OtherExpense.aggregate([
+      { $match: { site: { $in: siteIds } } },
+      { $group: { _id: null, totalSpend: { $sum: '$amount' } } }
     ]);
 
     res.json({
       totalWorkerSpend: workerStats.length > 0 ? workerStats[0].totalSpend : 0,
       totalSupplierSpend: supplierStats.length > 0 ? supplierStats[0].totalSpend : 0,
+      totalSupplierPaid: supplierStats.length > 0 ? supplierStats[0].totalPaid : 0,
+      totalOtherExpense: otherExpenseStats.length > 0 ? otherExpenseStats[0].totalSpend : 0,
       totalSites: siteIds.length
     });
   } catch (error) {
@@ -175,9 +228,10 @@ const deleteSite = async (req, res) => {
     }
 
     if (site) {
-      // Also delete related worker and supplier entries
+      // Also delete related worker, supplier, and other expense entries
       await WorkerEntry.deleteMany({ site: site._id });
       await SupplierEntry.deleteMany({ site: site._id });
+      await OtherExpense.deleteMany({ site: site._id });
       
       await site.deleteOne();
       res.json({ message: 'Site removed' });

@@ -34,12 +34,14 @@ const siteRoutes = require('./routes/siteRoutes');
 const workerRoutes = require('./routes/workerRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const otherExpenseRoutes = require('./routes/otherExpenseRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sites', siteRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/other-expenses', otherExpenseRoutes);
 
 // Connect to MongoDB and start server
 mongoose
