@@ -179,16 +179,19 @@ const updateSite = async (req, res) => {
 // @access  Private
 const getStats = async (req, res) => {
   try {
-    const sites = await Site.find({ contractor: req.user.contractorId }).select('_id');
-    const siteIds = sites.map(site => site._id);
+    const allSites = await Site.find({ contractor: req.user.contractorId }).select('_id');
+    const allSiteIds = allSites.map(site => site._id);
+
+    const activeSites = await Site.find({ contractor: req.user.contractorId, status: 'active' }).select('_id');
+    const activeSiteIds = activeSites.map(site => site._id);
 
     const workerStats = await WorkerEntry.aggregate([
-      { $match: { site: { $in: siteIds } } },
+      { $match: { site: { $in: activeSiteIds } } },
       { $group: { _id: null, totalSpend: { $sum: '$totalAmount' } } }
     ]);
 
     const supplierStats = await SupplierEntry.aggregate([
-      { $match: { site: { $in: siteIds } } },
+      { $match: { site: { $in: activeSiteIds } } },
       { $group: { 
         _id: null, 
         totalSpend: { $sum: '$totalAmount' },
@@ -197,7 +200,7 @@ const getStats = async (req, res) => {
     ]);
 
     const otherExpenseStats = await OtherExpense.aggregate([
-      { $match: { site: { $in: siteIds } } },
+      { $match: { site: { $in: activeSiteIds } } },
       { $group: { _id: null, totalSpend: { $sum: '$amount' } } }
     ]);
 
@@ -206,7 +209,7 @@ const getStats = async (req, res) => {
       totalSupplierSpend: supplierStats.length > 0 ? supplierStats[0].totalSpend : 0,
       totalSupplierPaid: supplierStats.length > 0 ? supplierStats[0].totalPaid : 0,
       totalOtherExpense: otherExpenseStats.length > 0 ? otherExpenseStats[0].totalSpend : 0,
-      totalSites: siteIds.length
+      totalSites: allSiteIds.length
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
